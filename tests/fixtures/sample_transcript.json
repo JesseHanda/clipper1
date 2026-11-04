@@ -1,0 +1,41 @@
+{
+  "language": "en",
+  "segments": [
+    {
+      "start": 42.5,
+      "end": 46.0,
+      "text": "Okay okay they're right behind me",
+      "words": [
+        {"start": 42.5, "end": 42.9, "text": "Okay"},
+        {"start": 42.9, "end": 43.3, "text": "okay"},
+        {"start": 43.4, "end": 43.8, "text": "they're"},
+        {"start": 43.8, "end": 44.2, "text": "right"},
+        {"start": 44.2, "end": 44.6, "text": "behind"},
+        {"start": 44.6, "end": 46.0, "text": "me"}
+      ]
+    },
+    {
+      "start": 58.0,
+      "end": 60.1,
+      "text": "NO WAY bro",
+      "words": [
+        {"start": 58.0, "end": 58.6, "text": "NO"},
+        {"start": 58.6, "end": 59.4, "text": "WAY"},
+        {"start": 59.5, "end": 60.1, "text": "bro"}
+      ]
+    },
+    {
+      "start": 306.0,
+      "end": 309.0,
+      "text": "get in the heli get in",
+      "words": [
+        {"start": 306.0, "end": 306.4, "text": "get"},
+        {"start": 306.4, "end": 306.6, "text": "in"},
+        {"start": 306.6, "end": 306.8, "text": "the"},
+        {"start": 306.8, "end": 307.5, "text": "heli"},
+        {"start": 307.6, "end": 308.2, "text": "get"},
+        {"start": 308.2, "end": 309.0, "text": "in"}
+      ]
+    }
+  ]
+}

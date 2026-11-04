@@ -1,64 +1,82 @@
-"""Shared contract between pipeline stages. See CLAUDE.md before editing.
+"""Shared contract between pipeline stages. See CLAUDE.md and docs/ARCHITECTURE.md.
 
 Rule: only ADD optional fields. Renames/removals need both devs to agree.
 """
 
 from __future__ import annotations
 
+import os
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
 
 from pydantic import BaseModel, Field
 
+# ---------------------------------------------------------------- transcript
+# Written by analyze (transcript.json), read by render (subtitles) and captions.
+
+
+class Word(BaseModel):
+    start: float
+    end: float
+    text: str
+
+
+class Segment(BaseModel):
+    start: float
+    end: float
+    text: str
+    words: list[Word] = Field(default_factory=list)
+
+
+class Transcript(BaseModel):
+    language: str | None = None
+    segments: list[Segment] = Field(default_factory=list)
+
+    def words_between(self, start: float, end: float) -> list[Word]:
+        return [w for s in self.segments for w in s.words if w.start >= start and w.end <= end]
+
+    def text_between(self, start: float, end: float) -> str:
+        return " ".join(w.text.strip() for w in self.words_between(start, end))
+
+
+# ---------------------------------------------------------------- job / clips
+# Pipeline order: ingest -> analyze -> captions -> render -> (review) -> publish queue
+
 
 class JobStatus(str, Enum):
     created = "created"
     ingested = "ingested"
     analyzed = "analyzed"
-    rendered = "rendered"
     captioned = "captioned"
-    published = "published"
+    rendered = "rendered"  # = ready for review
     failed = "failed"
 
 
-class Platform(str, Enum):
-    tiktok = "tiktok"
-    instagram = "instagram"
-
-
-class PostStatus(str, Enum):
+class ReviewStatus(str, Enum):
     pending = "pending"
-    scheduled = "scheduled"
-    uploaded_draft = "uploaded_draft"  # TikTok inbox: human adds sound + publishes in app
-    published = "published"
-    failed = "failed"
-
-
-class Post(BaseModel):
-    platform: Platform
-    status: PostStatus = PostStatus.pending
-    scheduled_at: datetime | None = None
-    remote_id: str | None = None
-    url: str | None = None
-    error: str | None = None
+    approved = "approved"
+    rejected = "rejected"
 
 
 class Clip(BaseModel):
-    id: str  # e.g. "c01"
+    id: str  # "c01"
+    # analyze
     start: float  # seconds in source
     end: float
-    score: float = 0.0  # 0..1 highlight confidence
-    reason: str = ""  # why analyze picked it
-    # filled by render
-    file: Path | None = None
-    # filled by captions
+    score: float = 0.0  # 0..1
+    reason: str = ""
+    # captions
+    hook_text: str | None = None  # on-screen first 3s, <= 6 words
     title: str | None = None
-    caption: str | None = None
+    caption: str | None = None  # no hashtags
     hashtags: list[str] = Field(default_factory=list)
+    vibe: str | None = None  # hype | funny | chill | dramatic
     suggested_sound: str | None = None
-    # filled by publish
-    posts: list[Post] = Field(default_factory=list)
+    # render
+    file: Path | None = None
+    # review (dashboard)
+    review: ReviewStatus = ReviewStatus.pending
 
     @property
     def duration(self) -> float:
@@ -67,18 +85,25 @@ class Clip(BaseModel):
 
 class Job(BaseModel):
     id: str
-    source_url: str
-    credit: str | None = None  # original creator / channel to credit
-    title: str | None = None  # source video title
+    source_url: str  # YouTube URL or local file path
     status: JobStatus = JobStatus.created
     created_at: datetime = Field(default_factory=datetime.now)
-    source_file: Path | None = None
-    transcript_file: Path | None = None
+    # ingest
+    title: str | None = None
+    channel: str | None = None
+    credit: str | None = None  # e.g. "@channel"; None for our own gameplay
     duration: float | None = None
+    source_file: Path | None = None
+    audio_file: Path | None = None  # 16kHz mono wav
+    # analyze
+    transcript_file: Path | None = None
     clips: list[Clip] = Field(default_factory=list)
     error: str | None = None
 
-    # --- persistence helpers ---
+    def clip(self, clip_id: str) -> Clip:
+        return next(c for c in self.clips if c.id == clip_id)
+
+    # --- persistence ---
     @staticmethod
     def dir_for(workspace: Path, job_id: str) -> Path:
         return workspace / "jobs" / job_id
@@ -89,8 +114,50 @@ class Job(BaseModel):
         return cls.model_validate_json(path.read_text(encoding="utf-8"))
 
     def save(self, workspace: Path) -> Path:
+        """Atomic write: never leaves a half-written manifest."""
         d = self.dir_for(workspace, self.id)
         d.mkdir(parents=True, exist_ok=True)
         path = d / "manifest.json"
-        path.write_text(self.model_dump_json(indent=2), encoding="utf-8")
+        tmp = path.with_suffix(".json.tmp")
+        tmp.write_text(self.model_dump_json(indent=2), encoding="utf-8")
+        os.replace(tmp, path)
         return path
+
+
+# ---------------------------------------------------------------- post queue
+# Rows in workspace/clipper.db, owned by clipper/publish. UNIQUE(job_id, clip_id, platform).
+
+
+class Platform(str, Enum):
+    tiktok = "tiktok"
+    instagram = "instagram"
+
+
+class PostStatus(str, Enum):
+    scheduled = "scheduled"
+    uploading = "uploading"  # claimed by scheduler
+    uploaded_draft = "uploaded_draft"  # TikTok inbox: finish in app (sound + caption)
+    published = "published"
+    failed = "failed"  # retries exhausted
+    needs_check = "needs_check"  # stuck in uploading; human must verify, never auto-retry
+
+
+class Post(BaseModel):
+    id: int | None = None
+    job_id: str
+    clip_id: str
+    platform: Platform
+    status: PostStatus = PostStatus.scheduled
+    scheduled_at: datetime
+    attempts: int = 0
+    remote_id: str | None = None
+    url: str | None = None
+    error: str | None = None
+    updated_at: datetime = Field(default_factory=datetime.now)
+
+
+class PostResult(BaseModel):
+    status: PostStatus
+    remote_id: str | None = None
+    url: str | None = None
+    error: str | None = None

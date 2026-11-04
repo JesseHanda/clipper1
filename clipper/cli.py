@@ -12,7 +12,7 @@ from clipper import config
 from clipper.models import Job, JobStatus
 
 app = typer.Typer(help="YouTube -> vertical clips -> TikTok/IG")
-STAGES = ["ingest", "analyze", "render", "captions", "publish"]
+STAGES = ["ingest", "analyze", "captions", "render"]  # publish runs via the scheduler
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
@@ -34,8 +34,8 @@ def _run_stage(stage: str, job: Job, force: bool) -> Job:
 
 
 @app.command()
-def run(url: str, force: bool = False, until: str = "publish") -> None:
-    """Run the full pipeline on a YouTube URL."""
+def run(url: str, force: bool = False, until: str = "render") -> None:
+    """Run the pipeline on a YouTube URL or local file (stops at render, ready for review)."""
     job = Job(id=uuid.uuid4().hex[:8], source_url=url)
     job.save(config.WORKSPACE)
     typer.echo(f"job {job.id}")

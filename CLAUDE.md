@@ -1,37 +1,42 @@
 # Clipper — CLAUDE.md
 
 Two people build this repo by vibe-coding with Claude Code. Read this whole file before you change anything.
+**The design, scope, and decisions live in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Read the section for the module you're touching. Don't build anything listed under "Out of scope" or "Stretch" until the MVP works end to end.** If a task needs a different design, stop and propose an edit to ARCHITECTURE.md instead of improvising.
+**Work is split into tasks in [docs/TASKS.md](docs/TASKS.md).** When asked to "do task X", follow that task's spec and its *Done when* line. Stay inside its folders and tick its checkbox in the same PR. Dev A is the friend (engine). Dev B is the repo owner (distribution).
 
 ## What we're building
 A tool that takes a YouTube link, cuts it into several vertical short clips (9:16, 15–60s), writes a caption and hashtags for each clip, and posts them to TikTok and Instagram Reels on a schedule. It targets GTA 6 gaming content, and **the deadline is the GTA 6 launch (Nov 19, 2026)**. Shipping beats polish. Only build what the pipeline needs.
 
 ## Pipeline (each stage is a separate module)
 ```
-URL ─► ingest ─► analyze ─► render ─► captions ─► publish
-       yt-dlp    find        ffmpeg     Claude API   TikTok / IG APIs
-                 highlights  9:16 crop  caption +    + scheduler
-                             subtitles  hashtags
+URL/file ─► ingest ─► analyze ─► captions ─► render ─► review (UI) ─► post queue ─► scheduler
+            yt-dlp    whisper +   Claude:     ffmpeg    approve/edit    SQLite        TikTok draft
+                      signals +   hook,       9:16 +                                  IG Reels
+                      Claude rank caption     subtitles
 ```
+The processes are `clipper run` (pipeline worker), `clipper ui` (Streamlit dashboard), and `clipper scheduler` (posting loop).
 Stages pass data **only through `workspace/jobs/<job_id>/manifest.json`**. That file follows the `Job` model in `clipper/models.py`. Each stage reads the manifest, does its work, fills in its own fields, updates `status`, and writes the manifest back. No stage imports another stage's internals.
 
 ```
 workspace/jobs/<job_id>/
   manifest.json      # the Job model, the single source of truth
-  source.mp4         # ingest
-  transcript.json    # analyze
-  clips/<clip_id>.mp4  # render
+  source.mp4, audio.wav  # ingest
+  transcript.json    # analyze (Transcript model)
+  clips/<clip_id>.mp4 / .ass  # render
+workspace/clipper.db # post queue (Post model). Only clipper/publish touches it.
 ```
 
 ## Ownership (to avoid merge conflicts)
 | Area | Owner | Folders |
 |---|---|---|
 | Engine: download, highlight detection, rendering | **Dev A** | `clipper/ingest`, `clipper/analyze`, `clipper/render` |
-| Distribution: captions, posting, scheduling | **Dev B** | `clipper/captions`, `clipper/publish` |
-| Shared contract | **both must agree** | `clipper/models.py`, `clipper/config.py`, `clipper/cli.py`, `pyproject.toml` |
+| Distribution: captions, dashboard, posting, scheduling | **Dev B** | `clipper/captions`, `clipper/ui`, `clipper/publish` |
+| Shared contract | **both must agree** | `clipper/models.py`, `clipper/config.py`, `clipper/llm.py`, `clipper/cli.py`, `pyproject.toml`, `docs/ARCHITECTURE.md` |
 
 - Stay inside your own folders. If you need a change in a shared file, keep it to a small PR of its own and tell the other person.
 - **Changing `clipper/models.py` breaks the other person's work.** Only add optional fields. Never rename or remove a field without agreeing first. Update `tests/fixtures/sample_manifest.json` in the same PR.
-- Dev B doesn't need to wait for Dev A. Build and test against `tests/fixtures/sample_manifest.json` and any short mp4.
+- Dev B doesn't need to wait for Dev A. Build and test against `tests/fixtures/sample_manifest.json`, `sample_transcript.json`, and any short mp4.
+- **`DRY_RUN=true` is the default and must stay that way in code.** Never write code that posts to a real account unless `config.DRY_RUN` is False, and never flip the default.
 
 ## Git workflow
 - `main` must always run. **Never commit directly to `main`.**
@@ -44,10 +49,11 @@ workspace/jobs/<job_id>/
 ## Stack and commands
 - Python 3.11+, managed with **uv**. FFmpeg must be on PATH.
 - `uv sync`: install dependencies
-- `uv run clipper run <youtube_url>`: run the full pipeline
-- `uv run clipper <stage> <job_id>`: run one stage (`ingest|analyze|render|captions|publish`)
+- `uv run clipper run <url_or_file>`: pipeline up to render (ready for review)
+- `uv run clipper stage <ingest|analyze|captions|render> <job_id> [--force]`: run one stage
+- `uv run clipper ui` / `uv run clipper scheduler`: dashboard / posting loop (Dev B adds these)
 - `uv run pytest`: tests. `uv run ruff check . --fix && uv run ruff format .`: lint and format
-- Libraries: `yt-dlp` (download), `faster-whisper` (transcription), `scenedetect` (scene cuts), `ffmpeg` via `subprocess` (all video work, no moviepy), `anthropic` (LLM), `httpx` (platform APIs), `typer` (CLI), `pydantic` (models).
+- Libraries: `yt-dlp` (download), `faster-whisper` (transcription), `scenedetect` (scene cuts), `ffmpeg` via `subprocess` (all video work, no moviepy), `anthropic` (LLM), `httpx` (platform APIs), `typer` (CLI), `pydantic` (models), `streamlit` (dashboard), `sqlite3` (post queue, stdlib).
 - LLM: use the Anthropic SDK with the model from `config.py` (default `claude-sonnet-5-5`). Ask for JSON output and validate it with pydantic.
 
 ## Code conventions
@@ -58,16 +64,14 @@ workspace/jobs/<job_id>/
 - Use the `logging` module, not `print`, except for CLI output.
 - Tests go in `tests/`. Use small fixtures. Don't download real videos in tests.
 
-## Domain notes (read before working on analyze, render, or publish)
-- **Gameplay highlights aren't mostly about speech.** Score candidate moments with audio loudness spikes (ffmpeg `ebur128`/`astats`), scene-cut density (`scenedetect`), and transcript reactions ("no way", laughter, shouting). Then send the top candidates and their transcript snippets to Claude to rank them and pick start and end times. Start each clip on the action. The first 1–2 seconds matter most.
-- **Vertical format.** The default layout puts the gameplay scaled to fit the width over a blurred, zoomed copy of the same video in the background. Optionally, `facecam` mode puts the streamer's cam on top and gameplay below. Output is 1080x1920, H.264, AAC, 30fps.
-- **Subtitles** are burned in from the whisper word timestamps: big, bold, centered, 2–4 words at a time.
-- **Music: never burn copyrighted or "trending" songs into the file.** Platforms mute those videos or strike the account, and neither API lets you attach in-app sounds. We support two modes:
-  - `MUSIC_MODE=in_app` (default): TikTok posts go to the **drafts/inbox**, and the human picks the trending sound in the app before publishing. The captions stage writes a `suggested_sound` from `trending_sounds.yaml`, which we update by hand each day.
-  - `MUSIC_MODE=library`: mix a royalty-free track from `music/` under the gameplay audio at low volume.
-- **TikTok Content Posting API:** an unaudited app can only post as `SELF_ONLY` (private). Default to the inbox/draft upload endpoint. Respect rate limits.
-- **Instagram Graph API:** needs a Business or Creator account linked to a Facebook Page. Use the Reels container flow (create container → poll status → publish) with resumable upload.
-- **Source content:** only process videos we're allowed to repost, such as our own gameplay or creators who said yes. Reposting other people's videos unchanged gets accounts flagged as "unoriginal." Keep the `source_url` and `credit` fields filled in.
+## Hard rules from the design (full detail is in docs/ARCHITECTURE.md)
+- **Never burn copyrighted or "trending" songs into the video file.** The default audio is the original game audio. Trending sounds get added by hand in the TikTok app, and captions only *suggests* one from `trending_sounds.yaml`.
+- **TikTok uses the inbox/draft upload (`FILE_UPLOAD`)**, and a human finishes the post in the app. Instagram uses the Instagram Login API with Reels resumable upload and publishes automatically.
+- **Never retry an upload that might already have succeeded.** A stuck `uploading` row becomes `needs_check`. The `UNIQUE(job_id, clip_id, platform)` constraint must stay.
+- Only post clips with `review == approved`, unless `AUTO_APPROVE=true`.
+- Every LLM call validates its output with a pydantic model and has a non-LLM fallback, so the pipeline never dies because of Claude output.
+- On Windows, ffmpeg's `subtitles=` filter breaks on absolute paths. Run ffmpeg with `cwd=` set to the clip folder and pass a relative `.ass` filename.
+- Only process sources we're allowed to repost, and keep `credit` filled in for anything that isn't our own gameplay.
 
 ## Definition of done for a PR
 1. Ruff is clean and pytest passes.

@@ -31,3 +31,6 @@ music/*
 .DS_Store
 Thumbs.db
 .claude/settings.local.json
+
+# secrets dir (oauth tokens)
+secrets/
