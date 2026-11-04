@@ -55,7 +55,7 @@ workspace/clipper.db # post queue (Post model). Only clipper/publish touches it.
 - `uv run clipper ui` / `uv run clipper scheduler`: dashboard / posting loop (Dev B adds these)
 - `uv run pytest`: tests. `uv run ruff check . --fix && uv run ruff format .`: lint and format
 - Libraries: `yt-dlp` (download), `faster-whisper` (transcription), `scenedetect` (scene cuts), `ffmpeg` via `subprocess` (all video work, no moviepy), `anthropic` (LLM), `httpx` (platform APIs), `typer` (CLI), `pydantic` (models), `streamlit` (dashboard), `sqlite3` (post queue, stdlib).
-- LLM: use the Anthropic SDK with the model from `config.py` (default `claude-sonnet-5-5`). Ask for JSON output and validate it with pydantic.
+- LLM: use the Anthropic SDK with the model from `config.py` (default `claude-opus-5-5`). **Always call Claude through `clipper.llm.ask_json`** (structured output plus pydantic validation, retry, refusal fallback). Never create your own client.
 
 ## Code conventions
 - Type hints everywhere. Use `pathlib.Path`, never string paths, because the code must run on both Windows and macOS/Linux.

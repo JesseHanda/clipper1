@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import os
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 
 from pydantic import BaseModel, Field
@@ -44,7 +44,7 @@ class Transcript(BaseModel):
 # Pipeline order: ingest -> analyze -> captions -> render -> (review) -> publish queue
 
 
-class JobStatus(str, Enum):
+class JobStatus(StrEnum):
     created = "created"
     ingested = "ingested"
     analyzed = "analyzed"
@@ -53,7 +53,7 @@ class JobStatus(str, Enum):
     failed = "failed"
 
 
-class ReviewStatus(str, Enum):
+class ReviewStatus(StrEnum):
     pending = "pending"
     approved = "approved"
     rejected = "rejected"
@@ -128,12 +128,12 @@ class Job(BaseModel):
 # Rows in workspace/clipper.db, owned by clipper/publish. UNIQUE(job_id, clip_id, platform).
 
 
-class Platform(str, Enum):
+class Platform(StrEnum):
     tiktok = "tiktok"
     instagram = "instagram"
 
 
-class PostStatus(str, Enum):
+class PostStatus(StrEnum):
     scheduled = "scheduled"
     uploading = "uploading"  # claimed by scheduler
     uploaded_draft = "uploaded_draft"  # TikTok inbox: finish in app (sound + caption)
