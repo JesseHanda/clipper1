@@ -41,7 +41,8 @@ workspace/clipper.db # post queue (Post model). Only clipper/publish touches it.
 ## Git workflow
 - `main` must always run. **Never commit directly to `main`.**
 - Branch names: `a/<feature>` or `b/<feature>` (e.g. `a/highlight-detection`, `b/tiktok-upload`).
-- One feature per branch, kept small. Open a PR and have the other person merge it.
+- One feature per branch, kept small. Open a PR, and **the author merges their own PR** once ruff and pytest pass. No approval is needed.
+- Exception: a PR that touches a shared file (see Ownership) needs a 👍 comment from the other person before it's merged.
 - Before opening a PR, run `git pull origin main` (rebase or merge), then `uv run ruff check . && uv run pytest`.
 - Commit messages use the imperative mood: "Add TikTok draft upload".
 - Never commit `.env`, cookies, tokens, `workspace/` contents, or video/audio files. `.gitignore` covers these, so don't override it.

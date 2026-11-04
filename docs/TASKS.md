@@ -7,7 +7,7 @@ How to work on a task:
 1. `git checkout main && git pull`
 2. `git checkout -b <branch from the table>`
 3. Tell Claude: **"Do task A3 from docs/TASKS.md"**. Claude reads CLAUDE.md and ARCHITECTURE.md on its own.
-4. Make ruff and pytest pass, then open a PR. The other dev reviews and merges it. Tick the box in the same PR.
+4. Make ruff and pytest pass, then open a PR and **merge it yourself**. Tick the box in the same PR. If it touches a shared file (`models.py`, `config.py`, `llm.py`, `cli.py`, `pyproject.toml`, the docs), get a 👍 from the other dev first.
 
 Each task's section in [ARCHITECTURE.md](ARCHITECTURE.md) has the full spec. ⛔ marks a task that must merge before the task that depends on it.
 
