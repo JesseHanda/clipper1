@@ -1,0 +1,33 @@
+[project]
+name = "clipper"
+version = "0.1.0"
+description = "YouTube -> vertical clips -> TikTok/IG"
+requires-python = ">=3.11"
+dependencies = [
+    "anthropic",
+    "faster-whisper",
+    "httpx",
+    "pydantic>=2",
+    "python-dotenv",
+    "pyyaml",
+    "scenedetect[opencv]",
+    "typer",
+    "yt-dlp",
+]
+
+[project.scripts]
+clipper = "clipper.cli:app"
+
+[dependency-groups]
+dev = ["pytest", "ruff"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

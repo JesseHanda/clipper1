@@ -1,0 +1,6 @@
+# Update by hand daily from TikTok/IG trending audio. captions stage picks one per clip
+# and writes it as `suggested_sound` so you know what to add in-app before publishing.
+sounds:
+  - name: "example sound name"
+    platform: tiktok
+    vibe: hype        # hype | funny | chill | dramatic

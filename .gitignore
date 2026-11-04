@@ -1,0 +1,33 @@
+# secrets
+.env
+*.cookies
+cookies.txt
+tokens*.json
+
+# python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+dist/
+
+# media + job output
+workspace/*
+!workspace/.gitkeep
+music/*
+!music/.gitkeep
+*.mp4
+*.mov
+*.mkv
+*.webm
+*.mp3
+*.wav
+*.m4a
+
+# editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+.claude/settings.local.json

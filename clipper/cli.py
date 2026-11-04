@@ -1,0 +1,55 @@
+"""CLI entrypoint. Each stage module must expose `run(job: Job, force: bool) -> Job`."""
+
+from __future__ import annotations
+
+import importlib
+import logging
+import uuid
+
+import typer
+
+from clipper import config
+from clipper.models import Job, JobStatus
+
+app = typer.Typer(help="YouTube -> vertical clips -> TikTok/IG")
+STAGES = ["ingest", "analyze", "render", "captions", "publish"]
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+
+
+def _run_stage(stage: str, job: Job, force: bool) -> Job:
+    module = importlib.import_module(f"clipper.{stage}")
+    if not hasattr(module, "run"):
+        typer.echo(f"[skip] stage '{stage}' not implemented yet")
+        return job
+    try:
+        job = module.run(job, force=force)
+    except Exception as e:  # keep the manifest, record the failure
+        job.status = JobStatus.failed
+        job.error = f"{stage}: {e}"
+        job.save(config.WORKSPACE)
+        raise
+    job.save(config.WORKSPACE)
+    return job
+
+
+@app.command()
+def run(url: str, force: bool = False, until: str = "publish") -> None:
+    """Run the full pipeline on a YouTube URL."""
+    job = Job(id=uuid.uuid4().hex[:8], source_url=url)
+    job.save(config.WORKSPACE)
+    typer.echo(f"job {job.id}")
+    for stage in STAGES[: STAGES.index(until) + 1]:
+        job = _run_stage(stage, job, force)
+
+
+@app.command()
+def stage(name: str, job_id: str, force: bool = False) -> None:
+    """Run a single stage on an existing job."""
+    if name not in STAGES:
+        raise typer.BadParameter(f"stage must be one of {STAGES}")
+    _run_stage(name, Job.load(config.WORKSPACE, job_id), force)
+
+
+if __name__ == "__main__":
+    app()

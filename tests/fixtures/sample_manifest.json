@@ -1,0 +1,34 @@
+{
+  "id": "sample01",
+  "source_url": "https://www.youtube.com/watch?v=EXAMPLE",
+  "credit": "@example_channel",
+  "title": "GTA 6 - Insane Police Chase",
+  "status": "rendered",
+  "created_at": "2026-11-04T18:00:00",
+  "source_file": "workspace/jobs/sample01/source.mp4",
+  "transcript_file": "workspace/jobs/sample01/transcript.json",
+  "duration": 620.0,
+  "clips": [
+    {
+      "id": "c01",
+      "start": 42.5,
+      "end": 71.0,
+      "score": 0.91,
+      "reason": "Loud crash + streamer yells 'no way'",
+      "file": "workspace/jobs/sample01/clips/c01.mp4",
+      "hashtags": [],
+      "posts": []
+    },
+    {
+      "id": "c02",
+      "start": 305.0,
+      "end": 338.2,
+      "score": 0.77,
+      "reason": "Helicopter escape, fast scene cuts",
+      "file": "workspace/jobs/sample01/clips/c02.mp4",
+      "hashtags": [],
+      "posts": []
+    }
+  ],
+  "error": null
+}
