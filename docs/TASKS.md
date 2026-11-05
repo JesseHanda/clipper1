@@ -39,7 +39,7 @@ Each task's section in [ARCHITECTURE.md](ARCHITECTURE.md) has the full spec. ⛔
 - [x] **A3 Signals + candidates** (`analyze/signals.py`, `analyze/candidates.py`): per-second loudness, cut density, and speech score, then combined score, peak picking, and windows snapped to pauses. **Pure functions with unit tests** on synthetic arrays.
 - [x] **A4 Ranker** (`analyze/rank.py`): send the candidates to `clipper.llm.ask_json`. Claude returns the final `CLIPS_PER_VIDEO` clips with start, end, score, and reason. Fall back to the top N by score. Leaves `status=analyzed`.
 - [x] **A5 Render** (`clipper/render`): ffmpeg cut, blur layout, loudnorm, and H.264 1080x1920 at 30fps. Writes `clips/<id>.mp4` and sets `clip.file`. Add `--clip <id>` to `clipper stage` (a small change to the shared `cli.py`, so tell Dev B). Leaves `status=rendered`.
-- [ ] **A6 Subtitles + hook** (`render/subtitles.py`): build the `.ass` file from words, 2–4 words per line with the current word highlighted. `hook_text` sits in the top third for 0–3s. Use the Windows `cwd=` trick. Pure ASS generator with unit tests.
+- [x] **A6 Subtitles + hook** (`render/subtitles.py`): build the `.ass` file from words, 2–4 words per line with the current word highlighted. `hook_text` sits in the top third for 0–3s. Use the Windows `cwd=` trick. Pure ASS generator with unit tests.
 - [ ] **A7 Tuning:** a 20-min video must finish in ≤ 15 min (fall back to whisper `base` if not), check that clips start on the action, and tune the scoring weights.
 
 ---

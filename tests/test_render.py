@@ -4,7 +4,7 @@ import subprocess
 import pytest
 
 from clipper import config, render
-from clipper.models import Clip, Job, JobStatus
+from clipper.models import Clip, Job, JobStatus, Segment, Transcript, Word
 from clipper.render import encode
 
 
@@ -80,6 +80,30 @@ def test_rerun_skips_and_clip_option_renders_one(job):
 
     with pytest.raises(ValueError, match="c09"):
         render.run(job, clip_id="c09")
+
+
+def test_subtitles_and_hook_are_burned_from_a_relative_ass(job, tmp_path):
+    transcript = Transcript(
+        segments=[Segment(start=1.5, end=2.5, text="NO WAY", words=[
+            Word(start=1.5, end=2.0, text="NO"), Word(start=2.0, end=2.5, text="WAY"),
+        ])]
+    )  # fmt: skip
+    job.transcript_file = tmp_path / "transcript.json"
+    job.transcript_file.write_text(transcript.model_dump_json(), encoding="utf-8")
+    job.clips[0].hook_text = "Watch this"
+
+    job = render.run(job)
+    clips_dir = job.clip("c01").file.parent
+    assert "NO" in (clips_dir / "c01.ass").read_text(encoding="utf-8")
+    assert not (clips_dir / "c02.ass").exists()  # no words, no hook: no subtitles filter
+    assert probe(job.clip("c01").file)["format"]["duration"]
+
+
+def test_ffmpeg_args_add_subtitles_only_when_given(tmp_path):
+    plain = encode.ffmpeg_args(tmp_path / "s.mp4", 0, 5, "o.mp4")
+    subbed = encode.ffmpeg_args(tmp_path / "s.mp4", 0, 5, "o.mp4", "c01.ass")
+    assert "subtitles" not in plain[plain.index("-filter_complex") + 1]
+    assert subbed[subbed.index("-filter_complex") + 1].endswith(",subtitles=c01.ass[v]")
 
 
 def test_ffmpeg_failure_raises_with_stderr(job, tmp_path):
