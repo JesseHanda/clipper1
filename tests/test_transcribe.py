@@ -3,7 +3,7 @@ from types import SimpleNamespace as NS
 
 import pytest
 
-from clipper import analyze, config
+from clipper import analyze, config, llm
 from clipper.analyze import signals
 from clipper.analyze import transcribe as tr
 from clipper.models import Job, JobStatus, Transcript
@@ -69,6 +69,11 @@ def test_fragments_merge_into_previous_word(fake_whisper, tmp_path):
 def job(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "WORKSPACE", tmp_path)
     monkeypatch.setattr(signals, "detect_cuts", lambda video: [10.0])
+
+    def no_claude(*args, **kwargs):
+        raise llm.LLMError("offline")
+
+    monkeypatch.setattr(llm, "ask_json", no_claude)  # the ranker falls back to signals
     audio = tmp_path / "audio.wav"
     with wave.open(str(audio), "wb") as f:  # 60 s of silence; the fake model never reads it
         f.setnchannels(1)
@@ -93,7 +98,7 @@ def test_stage_writes_transcript_and_skips_rerun(fake_whisper, job, caplog):
     assert "candidate " in caplog.text
     saved = Transcript.model_validate_json(job.transcript_file.read_text(encoding="utf-8"))
     assert saved.segments[0].words[1].text == "WAY"
-    assert job.status == JobStatus.ingested  # analyzed is set by the ranker (A4)
+    assert job.status == JobStatus.analyzed and job.clips
 
     analyze.run(job)
     assert len(fake_whisper["transcribe"]) == 1
