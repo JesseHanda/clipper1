@@ -34,9 +34,16 @@ def _run_stage(stage: str, job: Job, force: bool) -> Job:
 
 
 @app.command()
-def run(url: str, force: bool = False, until: str = "render") -> None:
+def run(
+    url: str,
+    context: str = typer.Option(
+        None, "--context", "-c", help="What the video is about; steers captions and tags."
+    ),
+    force: bool = False,
+    until: str = "render",
+) -> None:
     """Run the pipeline on a YouTube URL or local file (stops at render, ready for review)."""
-    job = Job(id=uuid.uuid4().hex[:8], source_url=url)
+    job = Job(id=uuid.uuid4().hex[:8], source_url=url, context=context)
     job.save(config.WORKSPACE)
     typer.echo(f"job {job.id}")
     for stage in STAGES[: STAGES.index(until) + 1]:

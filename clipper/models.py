@@ -86,10 +86,13 @@ class Clip(BaseModel):
 class Job(BaseModel):
     id: str
     source_url: str  # YouTube URL or local file path
+    # user's note at submit time ("GTA 6 launch, funny police fails"); steers captions/tags
+    context: str | None = None
     status: JobStatus = JobStatus.created
     created_at: datetime = Field(default_factory=datetime.now)
     # ingest
     title: str | None = None
+    description: str | None = None  # source video description (YouTube)
     channel: str | None = None
     credit: str | None = None  # e.g. "@channel"; None for our own gameplay
     duration: float | None = None

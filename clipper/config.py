@@ -51,7 +51,11 @@ LAYOUT = _get("LAYOUT", "blur")  # blur | facecam (stretch)
 MUSIC_MODE = _get("MUSIC_MODE", "in_app")  # in_app | library (stretch)
 
 # Captions
-BASE_HASHTAGS = _get("BASE_HASHTAGS", "#gta6 #gta #gaming").split()
+# Optional tags added to EVERY post, comma-separated, no "#" (in .env " #" starts a comment).
+# Leave empty to let Claude pick all tags per video.
+BASE_HASHTAGS = [
+    f"#{t.strip().lstrip('#')}" for t in _get("BASE_HASHTAGS", "").split(",") if t.strip()
+]
 
 # Publish
 TIKTOK_CLIENT_KEY = _get("TIKTOK_CLIENT_KEY")
