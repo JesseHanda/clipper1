@@ -3,18 +3,18 @@
 These rules add to the root `CLAUDE.md` and **override it where they disagree**.
 
 ## Who you are
-- **You are Dev B (distribution).** You own `clipper/captions`, `clipper/ui` and `clipper/publish`.
-  Do not change Dev A's folders (`clipper/ingest`, `clipper/analyze`, `clipper/render`).
+- **You are Dev A (engine).** You own `clipper/ingest`, `clipper/analyze` and `clipper/render`.
+  Do not change Dev B's folders (`clipper/captions`, `clipper/ui`, `clipper/publish`).
   Changes to shared files (`models.py`, `config.py`, `llm.py`, `cli.py`, `pyproject.toml`,
-  docs) still follow the root `CLAUDE.md` contract rules, because they ship to Dev A.
+  docs) still follow the root `CLAUDE.md` contract rules, because they ship to Dev B.
 - **`JesseHanda/clipper1` is your private dev environment.** It is not the team repo.
-- `Realche3/clipper` is the shared team repo (Dev A works there), and it is the source of truth.
+- `Realche3/clipper` is the shared team repo (Dev B, the repo owner, works there), and it is the source of truth.
   Claude has no push access to it. Read it only to sync. Never try to push to it.
 
 ## The workflow in clipper1 is different from the root CLAUDE.md
 - **No PRs, no reviews, no 👍 in clipper1.** The root `CLAUDE.md` git workflow (PRs, "never
   commit to `main`", approvals) applies only to `Realche3/clipper`.
-- You may commit and push to clipper1 `main` directly. Use one `b/<feature>` branch per
+- You may commit and push to clipper1 `main` directly. Use one `a/<feature>` branch per
   feature while working, then merge it into clipper1 `main` and push.
 - The quality bar still applies: `uv run ruff check . && uv run pytest` must pass before you
   call a feature done.
@@ -29,7 +29,7 @@ Do this first, before reading task specs or writing code:
    `git remote add upstream https://github.com/Realche3/clipper.git` in this repo.
 2. `git fetch upstream main && git fetch origin main`
 3. `git checkout main && git merge upstream/main && git push origin main`.
-   Dev A's work and the PRs the user merged upstream come in this way. Features the user already
+   Dev B's work and the PRs the user merged upstream come in this way. Features the user already
    shipped upstream merge cleanly because the code is the same.
    - **If the merge conflicts:** stop and ask the user. Never force-push or rewrite history.
 4. Tell the user, in one line, which clipper1 features are not in `Realche3/clipper` yet
@@ -43,7 +43,7 @@ feature:
    (cherry-pick, or check out the changed files). It must contain no `.claude/` files.
 2. Run ruff and pytest on that branch, then push it to clipper1.
 3. Tell the user that branch name and give them the commands to push it to `Realche3/clipper`
-   as `b/<feature>`.
+   as `a/<feature>`.
 
 ## Git
 - Never leave work unpushed. If a push fails, tell the user right away. Unpushed work in a cloud
