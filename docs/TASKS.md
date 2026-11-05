@@ -35,7 +35,7 @@ Each task's section in [ARCHITECTURE.md](ARCHITECTURE.md) has the full spec. ⛔
 
 - [x] **A1 Ingest** (`clipper/ingest`): yt-dlp download (≤1080p mp4, H.264 preferred) to `source.mp4`. YouTube URLs only. Extract `audio.wav` (16 kHz mono). Fill in `title`, `description`, `channel`, `credit`, `duration` (from yt-dlp metadata). Reject sources longer than `MAX_SOURCE_MINUTES`. Support `YTDLP_COOKIES_FROM_BROWSER`.
   *Done when:* `clipper run <url> --until ingest` leaves `status=ingested`. A test uses a 5s video generated with ffmpeg `testsrc` (no network).
-- [ ] **A2 Transcribe** (`clipper/analyze/transcribe.py`): faster-whisper with word timestamps and VAD, saved to `transcript.json` as the `Transcript` model. Skip if the file exists, unless `--force`.
+- [x] **A2 Transcribe** (`clipper/analyze/transcribe.py`): faster-whisper with word timestamps and VAD, saved to `transcript.json` as the `Transcript` model. Skip if the file exists, unless `--force`.
 - [ ] **A3 Signals + candidates** (`analyze/signals.py`, `analyze/candidates.py`): per-second loudness, cut density, and speech score, then combined score, peak picking, and windows snapped to pauses. **Pure functions with unit tests** on synthetic arrays.
 - [ ] **A4 Ranker** (`analyze/rank.py`): send the candidates to `clipper.llm.ask_json`. Claude returns the final `CLIPS_PER_VIDEO` clips with start, end, score, and reason. Fall back to the top N by score. Leaves `status=analyzed`.
 - [ ] **A5 Render** (`clipper/render`): ffmpeg cut, blur layout, loudnorm, and H.264 1080x1920 at 30fps. Writes `clips/<id>.mp4` and sets `clip.file`. Add `--clip <id>` to `clipper stage` (a small change to the shared `cli.py`, so tell Dev B). Leaves `status=rendered`.
