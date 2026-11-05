@@ -33,7 +33,7 @@ Each task's section in [ARCHITECTURE.md](ARCHITECTURE.md) has the full spec. ⛔
 | A6 | Subtitles + hook overlay | `a/subtitles` | Nov 11 | A5 |
 | A7 | Speed + quality pass | `a/tuning` | Nov 13–16 | M1 |
 
-- [ ] **A1 Ingest** (`clipper/ingest`): yt-dlp download (≤1080p mp4) or copy a local file to `source.mp4`. Extract `audio.wav` (16 kHz mono). Fill in `title`, `channel`, `credit`, `duration`. Reject sources longer than `MAX_SOURCE_MINUTES`. Support `YTDLP_COOKIES_FROM_BROWSER`.
+- [ ] **A1 Ingest** (`clipper/ingest`): yt-dlp download (≤1080p mp4) or copy a local file to `source.mp4`. Extract `audio.wav` (16 kHz mono). Fill in `title`, `description`, `channel`, `credit`, `duration` (from yt-dlp metadata). Reject sources longer than `MAX_SOURCE_MINUTES`. Support `YTDLP_COOKIES_FROM_BROWSER`.
   *Done when:* `clipper run <url> --until ingest` leaves `status=ingested`. A test uses a 5s video generated with ffmpeg `testsrc` (no network).
 - [ ] **A2 Transcribe** (`clipper/analyze/transcribe.py`): faster-whisper with word timestamps and VAD, saved to `transcript.json` as the `Transcript` model. Skip if the file exists, unless `--force`.
 - [ ] **A3 Signals + candidates** (`analyze/signals.py`, `analyze/candidates.py`): per-second loudness, cut density, and speech score, then combined score, peak picking, and windows snapped to pauses. **Pure functions with unit tests** on synthetic arrays.
@@ -58,13 +58,13 @@ Each task's section in [ARCHITECTURE.md](ARCHITECTURE.md) has the full spec. ⛔
 | B8 | Dashboard v2: edit → re-render | `b/ui-edit` | Nov 13–14 | B7, A5 |
 
 - [x] **B1 `clipper/llm.py`** *(shared, merge first so A4 can use it)*: `ask_json(system: str, prompt: str, schema: type[BaseModel], max_tokens=...) -> BaseModel`. It uses the Anthropic SDK and `config.CLAUDE_MODEL`, validates with pydantic, retries once, then raises `LLMError`. Tests mock the client. Tell Dev A when it's merged.
-- [ ] **B2 Captions** (`clipper/captions`): one Claude call per job. Fills in `hook_text`, `title`, `caption`, `hashtags` (+ `BASE_HASHTAGS`), `vibe`, and `suggested_sound` from `trending_sounds.yaml`. Fallback: the video title plus base hashtags. Leaves `status=captioned`. Test it on `tests/fixtures/sample_manifest.json`.
+- [x] **B2 Captions** (`clipper/captions`): one Claude call per job. Fills in `hook_text`, `title`, `caption`, `hashtags` (+ `BASE_HASHTAGS`), `vibe`, and `suggested_sound` from `trending_sounds.yaml`. Fallback: the video title plus base hashtags. Leaves `status=captioned`. Test it on `tests/fixtures/sample_manifest.json`.
 - [ ] **B3 Queue + slots** (`publish/queue.py`, `publish/slots.py`): SQLite `posts` table with `UNIQUE(job_id, clip_id, platform)`. `enqueue(job, clip)` adds one row per enabled platform. `next_slot()` respects the interval, posting window, and daily cap. **Unit tests for the slotting.**
 - [ ] **B4 Scheduler** (`publish/scheduler.py`, `publish/dryrun.py`): a loop every 60s that claims due rows with `scheduled→uploading`, calls the client, and records the result. Retries at 5, 15, and 45 min. A row stuck for more than 15 min becomes `needs_check`. Use `DryRunClient` whenever `DRY_RUN=true`. Add the `clipper scheduler` command.
 - [ ] **B5 TikTok** (`publish/tiktok.py`, `publish/auth.py`): `clipper auth tiktok` runs the OAuth flow once and saves tokens to `secrets/tokens.json` with auto-refresh. Upload via inbox `FILE_UPLOAD` as a single chunk, which leaves `uploaded_draft`.
 - [ ] **B6 Instagram** (`publish/instagram.py`): `clipper auth instagram` gets a long-lived token and refreshes it. Flow: Reels container (`upload_type=resumable`), upload the local file, poll the status, publish. The caption is caption + hashtags + credit. Saves `remote_id` and `url`.
 - [ ] **B7 Dashboard v1** (`clipper/ui/app.py`, `clipper ui` command):
-  - Paste a URL to spawn `clipper run` as a subprocess. Show the job list with status.
+  - Paste a URL plus an optional **context note** ("what is this video about?") to spawn `clipper run --context ...` as a subprocess. Show the job list with status.
   - Clip grid with a video player, approve/reject, and editable caption and hashtags.
   - Approving calls `enqueue`. The queue view shows each post's status.
   - TikTok drafts get a **copy caption** button and the suggested sound.
