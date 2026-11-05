@@ -75,6 +75,29 @@ def test_fills_every_clip_from_claude(monkeypatch, job):
     assert "NO WAY bro" in prompt and "get in the heli" in prompt
 
 
+def test_prompt_includes_context_and_description(monkeypatch, job):
+    calls = _fake_claude(monkeypatch, CaptionSet(clips=[_cap("c01"), _cap("c02")]))
+    generate.run(job)
+    system, prompt = calls[0]
+    assert "Poster's note: GTA 6 launch week, police chase fails" in prompt
+    assert "escape 5 stars in Vice City" in prompt
+    assert "GTA" not in system  # the prompt itself is niche-agnostic
+
+
+def test_no_base_hashtags_means_claude_picks_all(monkeypatch, job):
+    monkeypatch.setattr(config, "BASE_HASHTAGS", [])
+    calls = _fake_claude(monkeypatch, CaptionSet(clips=[_cap("c01"), _cap("c02")]))
+    out = generate.run(job)
+    assert "added automatically" not in calls[0][0]
+    assert out.clips[0].hashtags == ["#gta6chase", "#vicecity", "#gta6"]
+
+
+def test_fallback_uses_context_when_no_title(monkeypatch, job):
+    job.title = None
+    _fake_claude(monkeypatch, error=llm.LLMError("down"))
+    assert generate.run(job).clips[0].caption == "GTA 6 launch week, police chase fails"
+
+
 def test_falls_back_when_claude_fails(monkeypatch, job):
     _fake_claude(monkeypatch, error=llm.LLMError("down"))
     out = generate.run(job)

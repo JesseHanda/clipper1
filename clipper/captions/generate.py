@@ -43,25 +43,30 @@ class CaptionSet(BaseModel):
 
 
 SYSTEM = """\
-You write short-form social copy for a gaming account that posts GTA 6 clips to TikTok \
-and Instagram Reels. Your audience is gamers scrolling fast; you get about one second \
-to make them stop.
+You write short-form social copy for an account that posts video clips to TikTok and \
+Instagram Reels. Viewers scroll fast; you get about one second to make them stop.
+
+Work out what the video is about (game, topic, people, event) from what you are given, \
+in this order of trust: the poster's note, then the source title and description, then \
+the clip transcripts. Write in the voice of that niche's community and pick hashtags that \
+community actually searches.
 
 For each clip you receive, write:
 - hook_text: on-screen text shown for the first 3 seconds. At most 6 words. It must make \
 the viewer want to see what happens, and it must be true to the clip. No hashtags, no emojis.
 - title: a short internal title (under 60 characters) describing the moment.
-- caption: the post caption, at most 150 characters, written like a real gamer posts. \
-At most one emoji. No hashtags in the caption. It can ask a question to drive comments.
-- hashtags: 3 to 5 specific hashtags for this clip (for example #gta6chase, #vicecity). \
-Do not repeat these base tags, which are added automatically: {base_tags}.
+- caption: the post caption, at most 150 characters, written like a real fan of this \
+niche posts. At most one emoji. No hashtags in the caption. It can ask a question to \
+drive comments.
+- hashtags: 3 to 5 hashtags specific to this video's niche and this moment (the game or \
+topic name plus what happens), not generic tags like #fyp or #viral.{base_tags_rule}
 - vibe: one of hype, funny, chill, dramatic, whichever best fits the moment.
 
 Rules:
-- Base everything on the clip's reason and transcript. Do not invent events that are not \
-described there.
+- Base everything on what you are given. Do not invent events, names, or facts that are \
+not there.
 - Every clip from the same video must get a clearly different hook and caption.
-- Never claim the clip is official, leaked, or exclusive unless the source title says so.
+- Never claim the clip is official, leaked, or exclusive unless the source says so.
 - Return exactly one entry per clip id you are given, using the same ids."""
 
 
@@ -114,8 +119,10 @@ def _load_transcript(job: Job) -> Transcript | None:
 
 def build_prompt(job: Job, transcript: Transcript | None) -> str:
     lines = [
+        f"Poster's note: {job.context or '(none)'}",
         f"Source video title: {job.title or 'unknown'}",
         f"Channel: {job.channel or 'unknown'}",
+        f"Source description:\n{job.description or '(none)'}",
         "",
         "Clips:",
     ]
@@ -131,7 +138,13 @@ def build_prompt(job: Job, transcript: Transcript | None) -> str:
 
 
 def _ask_claude(job: Job, transcript: Transcript | None) -> dict[str, ClipCaption]:
-    system = SYSTEM.format(base_tags=" ".join(config.BASE_HASHTAGS))
+    rule = (
+        f" Do not repeat these tags, which are added automatically: "
+        f"{' '.join(config.BASE_HASHTAGS)}."
+        if config.BASE_HASHTAGS
+        else ""
+    )
+    system = SYSTEM.format(base_tags_rule=rule)
     try:
         result = llm.ask_json(system, build_prompt(job, transcript), CaptionSet)
     except llm.LLMError as e:
@@ -149,7 +162,7 @@ def _apply_caption(clip: Clip, cap: ClipCaption) -> None:
 
 
 def _apply_fallback(clip: Clip, job: Job) -> None:
-    title = (job.title or "GTA 6 moment").strip()
+    title = (job.title or job.context or "Watch till the end").strip()
     clip.hook_text = clean_hook(title)
     clip.title = title
     clip.caption = clean_caption(title)

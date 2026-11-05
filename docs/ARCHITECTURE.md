@@ -80,7 +80,7 @@ Stage order: **ingest → analyze → captions → render**. Captions runs befor
 
 ### 5.1 ingest (Dev A)
 - Input: a URL or a local path. Uses `yt-dlp -f "bv*[height<=1080][ext=mp4]+ba[ext=m4a]/b[height<=1080]"` and merges to `source.mp4`.
-- Writes to the manifest: `title`, `channel`, `credit`, `duration`, `source_file`. Rejects sources longer than `MAX_SOURCE_MINUTES`.
+- Writes to the manifest: `title`, `description`, `channel`, `credit`, `duration`, `source_file`. Rejects sources longer than `MAX_SOURCE_MINUTES`.
 - Also extracts `audio.wav` (16 kHz mono) once. Transcription and the loudness analysis both reuse it.
 
 ### 5.2 analyze (Dev A)
@@ -95,8 +95,8 @@ Stage order: **ingest → analyze → captions → render**. Captions runs befor
 5. Write `clips[]` to the manifest. Status becomes `analyzed`.
 
 ### 5.3 captions (Dev B)
-- One Claude call per job (all clips together, so the captions don't repeat each other). Inputs: the video title, plus each clip's transcript snippet and reason.
-- Output per clip: `hook_text` (≤ 6 words, shown on screen for the first 3s), `title`, `caption` (≤ 150 chars, no hashtags), and `hashtags` (3–5, merged with `BASE_HASHTAGS`, e.g. `#gta6 #gta #gaming`).
+- One Claude call per job (all clips together, so the captions don't repeat each other). Inputs, most trusted first: the poster's `context` note given at submit time, the source title, channel and description, then each clip's reason and transcript snippet. **Nothing is hardcoded to GTA**, so Claude infers the niche from these inputs.
+- Output per clip: `hook_text` (≤ 6 words, shown on screen for the first 3s), `title`, `caption` (≤ 150 chars, no hashtags), and `hashtags` (3–5, niche-specific, plus the optional account-wide `BASE_HASHTAGS`).
 - `suggested_sound`: a match from `trending_sounds.yaml` by `vibe`, which Claude also picks (hype, funny, chill, or dramatic).
 - Status becomes `captioned`.
 

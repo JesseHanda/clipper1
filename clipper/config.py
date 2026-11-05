@@ -51,11 +51,10 @@ LAYOUT = _get("LAYOUT", "blur")  # blur | facecam (stretch)
 MUSIC_MODE = _get("MUSIC_MODE", "in_app")  # in_app | library (stretch)
 
 # Captions
-# comma-separated, no "#" (in .env a " #" starts a comment): BASE_HASHTAGS=gta6,gta,gaming
+# Optional tags added to EVERY post, comma-separated, no "#" (in .env " #" starts a comment).
+# Leave empty to let Claude pick all tags per video.
 BASE_HASHTAGS = [
-    f"#{t.strip().lstrip('#')}"
-    for t in _get("BASE_HASHTAGS", "gta6,gta,gaming").split(",")
-    if t.strip()
+    f"#{t.strip().lstrip('#')}" for t in _get("BASE_HASHTAGS", "").split(",") if t.strip()
 ]
 
 # Publish
