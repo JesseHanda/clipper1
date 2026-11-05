@@ -37,8 +37,10 @@ Do this first, before reading task specs or writing code:
 5. Create your feature branch from the up-to-date `main`.
 
 ## Handing a finished feature to the user
-`.claude/` exists only in clipper1 and must never reach `Realche3/clipper`. So for each finished
-feature:
+`.claude/` exists only in clipper1 and must never reach `Realche3/clipper`. clipper1 is a fork,
+but **never open the PR from clipper1 `main`** (GitHub's "Contribute" button), because `main`
+carries `.claude/`. The user opens it from a `ship/` branch on GitHub's compare page instead.
+So for each finished feature:
 1. Make a branch `ship/<feature>` from `upstream/main` and add only the feature's changes to it
    (cherry-pick, or check out the changed files). It must contain no `.claude/` files.
 2. Run ruff and pytest on that branch, then push it to clipper1.
