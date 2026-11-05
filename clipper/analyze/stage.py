@@ -1,7 +1,7 @@
-"""Analyze stage: transcript -> (A3 signals + candidates) -> (A4 Claude ranker).
+"""Analyze stage: transcript -> signals + candidates -> (A4 Claude ranker).
 
-Spec: docs/ARCHITECTURE.md §5.2. Until the ranker lands, this only writes transcript.json
-and leaves status at `ingested`.
+Spec: docs/ARCHITECTURE.md §5.2. Until the ranker lands, this writes transcript.json, logs the
+candidates and leaves status at `ingested`.
 """
 
 from __future__ import annotations
@@ -11,15 +11,18 @@ import os
 from pathlib import Path
 
 from clipper import config
+from clipper.analyze import signals
+from clipper.analyze.candidates import Candidate, find_candidates
 from clipper.analyze.transcribe import transcribe
-from clipper.models import Job
+from clipper.models import Job, Transcript
 
 log = logging.getLogger(__name__)
 
 
 def run(job: Job, force: bool = False) -> Job:
-    if job.audio_file is None or not Path(job.audio_file).exists():
-        raise RuntimeError("audio.wav is missing; run the ingest stage first")
+    for f in (job.audio_file, job.source_file):
+        if f is None or not Path(f).exists():
+            raise RuntimeError("source.mp4 or audio.wav is missing; run the ingest stage first")
 
     job_dir = Job.dir_for(config.WORKSPACE, job.id).resolve()
     job_dir.mkdir(parents=True, exist_ok=True)
@@ -32,4 +35,29 @@ def run(job: Job, force: bool = False) -> Job:
     else:
         log.info("transcript.json exists; skipping transcription (use --force to redo)")
     job.transcript_file = path
+
+    transcript = Transcript.model_validate_json(path.read_text(encoding="utf-8"))
+    candidates = _candidates(job, transcript)
+    for c in candidates:
+        log.info("candidate %.1f-%.1fs score=%.2f %s", c.start, c.end, c.score, c.stats)
     return job
+
+
+def _candidates(job: Job, transcript: Transcript) -> list[Candidate]:
+    samples, sr = signals.read_wav(Path(job.audio_file))
+    loud = signals.loudness_per_second(samples, sr)
+    n = len(loud)
+    cuts = signals.detect_cuts(Path(job.source_file))
+    score = signals.combine(
+        loud, signals.cut_density(cuts, n), signals.speech_per_second(transcript, n)
+    )
+    return find_candidates(
+        score,
+        signals.zscore(loud),
+        cuts,
+        transcript,
+        duration=job.duration or n,
+        k=config.CANDIDATES,
+        clip_min=config.CLIP_MIN_SECONDS,
+        clip_max=config.CLIP_MAX_SECONDS,
+    )
