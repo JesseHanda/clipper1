@@ -1,8 +1,10 @@
+import wave
 from types import SimpleNamespace as NS
 
 import pytest
 
 from clipper import analyze, config
+from clipper.analyze import signals
 from clipper.analyze import transcribe as tr
 from clipper.models import Job, JobStatus, Transcript
 
@@ -66,15 +68,29 @@ def test_fragments_merge_into_previous_word(fake_whisper, tmp_path):
 @pytest.fixture
 def job(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "WORKSPACE", tmp_path)
+    monkeypatch.setattr(signals, "detect_cuts", lambda video: [10.0])
     audio = tmp_path / "audio.wav"
-    audio.write_bytes(b"")  # the fake model never reads it
+    with wave.open(str(audio), "wb") as f:  # 60 s of silence; the fake model never reads it
+        f.setnchannels(1)
+        f.setsampwidth(2)
+        f.setframerate(16000)
+        f.writeframes(b"\0\0" * 16000 * 60)
+    source = tmp_path / "source.mp4"
+    source.write_bytes(b"")
     return Job(
-        id="j1", source_url="https://youtu.be/x", status=JobStatus.ingested, audio_file=audio
+        id="j1",
+        source_url="https://youtu.be/x",
+        status=JobStatus.ingested,
+        audio_file=audio,
+        source_file=source,
+        duration=60.0,
     )
 
 
-def test_stage_writes_transcript_and_skips_rerun(fake_whisper, job):
+def test_stage_writes_transcript_and_skips_rerun(fake_whisper, job, caplog):
+    caplog.set_level("INFO")
     job = analyze.run(job)
+    assert "candidate " in caplog.text
     saved = Transcript.model_validate_json(job.transcript_file.read_text(encoding="utf-8"))
     assert saved.segments[0].words[1].text == "WAY"
     assert job.status == JobStatus.ingested  # analyzed is set by the ranker (A4)
