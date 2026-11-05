@@ -33,3 +33,8 @@ Do this first, before reading task specs or writing code:
 - Never commit work you can't push. If a push fails, tell the user right away. Unpushed work
   in a cloud session is lost when the session ends.
 - This file is specific to clipper1. Never copy it into `Realche3/clipper`.
+
+## Coding guidelines
+- Use the `karpathy-guidelines` skill (`.claude/skills/karpathy-guidelines/SKILL.md`) whenever
+  you write, review or refactor code: state assumptions, keep it simple, make surgical changes,
+  and define how you'll verify the work.
