@@ -32,7 +32,8 @@ AUTO_APPROVE = _bool("AUTO_APPROVE", False)
 
 # LLM
 ANTHROPIC_API_KEY = _get("ANTHROPIC_API_KEY")
-CLAUDE_MODEL = _get("CLAUDE_MODEL", "claude-sonnet-5-5")
+CLAUDE_MODEL = _get("CLAUDE_MODEL", "claude-opus-5-5")
+CLAUDE_EFFORT = _get("CLAUDE_EFFORT", "medium")  # low | medium | high | xhigh | max
 
 # Ingest
 MAX_SOURCE_MINUTES = int(_get("MAX_SOURCE_MINUTES", "90"))

@@ -156,7 +156,7 @@ Rules:
 | D7 | faster-whisper `small` int8 on CPU | About 4–8 min for 20 min of audio on a laptop. Works without a GPU. | OpenAI Whisper API (cost, upload time), YouTube auto-captions (bad timings). Kept as a fallback. |
 | D8 | ffmpeg via subprocess, ASS subtitles via libass | Fastest, full control, styled word highlighting | moviepy (slow), Remotion |
 | D9 | Captions before render | The hook text gets burned into the video. | Render twice |
-| D10 | Claude `claude-sonnet-5-5`, JSON validated with pydantic, 1 retry, then a fallback | Good judgment on taste. The cost per job is a few cents. | Local LLM (setup time, quality) |
+| D10 | Claude `claude-opus-5-5` at `medium` effort, through `llm.ask_json`: structured output, 1 retry, server-side refusal fallback, then a non-LLM fallback | Best judgment on taste. About 2 calls per job, costing cents. Switch models with `CLAUDE_MODEL`. | Local LLM (setup time, quality) |
 | D11 | Human review gate by default | One bad or offensive clip costs more than the minutes saved. | Full auto (available as `AUTO_APPROVE`) |
 | D12 | Original game audio by default. Trending sounds added in the TikTok app. | The APIs can't attach in-app sounds, and copyrighted audio gets muted or struck. | Burning songs into the file |
 | D13 | TikTok inbox/draft upload for the MVP | Works before the audit, and it's the only way to add a trending sound anyway. | Direct post (needs audit, still no trending sound) |
