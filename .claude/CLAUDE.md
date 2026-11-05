@@ -50,6 +50,6 @@ feature:
   session is lost when the session ends.
 
 ## Coding guidelines
-- Use the `karpathy-guidelines` skill (`.claude/skills/karpathy-guidelines/SKILL.md`) whenever
-  you write, review or refactor code: state assumptions, keep it simple, make surgical changes,
-  and define how you'll verify the work.
+- **Always** load the `karpathy-guidelines` skill (`.claude/skills/karpathy-guidelines/SKILL.md`)
+  before adding a feature or making any change, every time, without being asked: state
+  assumptions, keep it simple, make surgical changes, and define how you'll verify the work.
