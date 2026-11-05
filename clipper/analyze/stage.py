@@ -1,7 +1,6 @@
-"""Analyze stage: transcript -> signals + candidates -> (A4 Claude ranker).
+"""Analyze stage: transcript -> signals + candidates -> Claude ranker -> clips.
 
-Spec: docs/ARCHITECTURE.md §5.2. Until the ranker lands, this writes transcript.json, logs the
-candidates and leaves status at `ingested`.
+Spec: docs/ARCHITECTURE.md §5.2. Status becomes `analyzed`.
 """
 
 from __future__ import annotations
@@ -13,8 +12,9 @@ from pathlib import Path
 from clipper import config
 from clipper.analyze import signals
 from clipper.analyze.candidates import Candidate, find_candidates
+from clipper.analyze.rank import rank
 from clipper.analyze.transcribe import transcribe
-from clipper.models import Job, Transcript
+from clipper.models import Job, JobStatus, Transcript
 
 log = logging.getLogger(__name__)
 
@@ -36,10 +36,22 @@ def run(job: Job, force: bool = False) -> Job:
         log.info("transcript.json exists; skipping transcription (use --force to redo)")
     job.transcript_file = path
 
-    transcript = Transcript.model_validate_json(path.read_text(encoding="utf-8"))
-    candidates = _candidates(job, transcript)
-    for c in candidates:
-        log.info("candidate %.1f-%.1fs score=%.2f %s", c.start, c.end, c.score, c.stats)
+    if job.clips and not force:
+        log.info("clips already picked; skipping ranking (use --force to redo)")
+    else:
+        transcript = Transcript.model_validate_json(path.read_text(encoding="utf-8"))
+        candidates = _candidates(job, transcript)
+        for c in candidates:
+            log.info("candidate %.1f-%.1fs score=%.2f %s", c.start, c.end, c.score, c.stats)
+        job.clips = rank(
+            job,
+            candidates,
+            transcript,
+            n=config.CLIPS_PER_VIDEO,
+            clip_min=config.CLIP_MIN_SECONDS,
+            clip_max=config.CLIP_MAX_SECONDS,
+        )
+    job.status = JobStatus.analyzed
     return job
 
 
