@@ -37,6 +37,7 @@ CLAUDE_EFFORT = _get("CLAUDE_EFFORT", "medium")  # low | medium | high | xhigh |
 # Per-task models (empty = CLAUDE_MODEL). Sounds is plain list extraction, so the cheapest
 # model does it well; ranking and captions need taste, so they default to the main model.
 CLAUDE_MODEL_RANK = _get("CLAUDE_MODEL_RANK") or CLAUDE_MODEL
+CLAUDE_MODEL_MOMENTS = _get("CLAUDE_MODEL_MOMENTS") or CLAUDE_MODEL  # moments from the transcript
 CLAUDE_MODEL_CAPTIONS = _get("CLAUDE_MODEL_CAPTIONS") or CLAUDE_MODEL
 CLAUDE_MODEL_SOUNDS = _get("CLAUDE_MODEL_SOUNDS") or "claude-haiku-5-5"
 

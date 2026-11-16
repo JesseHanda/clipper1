@@ -38,9 +38,11 @@ and Instagram Reels. Viewers scroll fast: a good clip has a clear moment (a reac
 fail, a surprise, a funny line, a big play) and starts right on the action.
 
 Work out what the video is about from the poster's note (most trusted), then the title \
-and description. You get candidate windows found from audio loudness, scene cuts and \
-speech, each with its stats and a transcript whose lines start with their time in the \
-source video.
+and description. You get candidate windows, each found either from signals (audio \
+loudness, scene cuts, speech) or from the transcript (something said that could stand as a \
+clip). Each has its stats and a transcript whose lines start with their time in the source \
+video. "most replayed", when it is there, is how much YouTube viewers rewatched the \
+window's best part, from 0 to 1: treat a high value as real evidence that the moment works.
 
 Score every candidate from 0 to 1 for how well it would do as a short clip. Judge three \
 things and let the weakest one hold the score down:
@@ -69,18 +71,19 @@ def build_prompt(
     ]
     for i, c in enumerate(candidates):
         s = c.stats
+        replay = f", most replayed: {s['replay']}" if "replay" in s else ""
         lines += [
             f"- index: {i}",
-            f"  window: {c.start:.1f}-{c.end:.1f}s",
+            f"  window: {c.start:.1f}-{c.end:.1f}s (found from {c.source})",
             f"  loudness z at peak: {s['loud_z']}, scene cuts: {s['cuts']}, "
-            f"words/s: {s['words_per_s']}",
+            f"words/s: {s['words_per_s']}{replay}",
         ]
-        timed = _timed_lines(transcript.words_between(c.start, c.end))
+        timed = timed_lines(transcript.words_between(c.start, c.end))
         lines += ["  transcript:", *timed] if timed else ["  transcript: (no speech)"]
     return "\n".join(lines)
 
 
-def _timed_lines(words: list[Word]) -> list[str]:
+def timed_lines(words: list[Word]) -> list[str]:
     """Words as '[41.0s] text' lines, split at pauses, so Claude can place the start and end."""
     groups: list[list[Word]] = []
     for w in words:

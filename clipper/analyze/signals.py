@@ -12,9 +12,10 @@ from pathlib import Path
 
 import numpy as np
 
-from clipper.models import Transcript
+from clipper.models import HeatPoint, Transcript
 
 WEIGHTS = (0.5, 0.3, 0.2)  # loud, cuts, speech
+REPLAY_WEIGHT = 0.4  # share of the score given to YouTube's "most replayed" graph, if there is one
 SMOOTH_SECONDS = 3
 CUT_WINDOW = 5
 # Reactions that mark a moment. Phrases are matched on the joined, lowercased words.
@@ -102,8 +103,28 @@ def speech_per_second(transcript: Transcript, n: int) -> np.ndarray:
     return speech
 
 
-def combine(loud: np.ndarray, cuts: np.ndarray, speech: np.ndarray) -> np.ndarray:
+def replay_per_second(heatmap: list[HeatPoint], n: int) -> np.ndarray:
+    """YouTube's "most replayed" value (0..1) for each second; all zeros if there is no graph.
+
+    The first span is set to the median: every viewer starts at 0:00, so it is always high
+    and says nothing about the content.
+    """
+    replay = np.zeros(n)
+    if not heatmap:
+        return replay
+    values = [h.value for h in heatmap]
+    values[0] = float(np.median(values))
+    for h, value in zip(heatmap, values, strict=True):
+        replay[max(int(h.start), 0) : int(np.ceil(h.end))] = value
+    return replay
+
+
+def combine(
+    loud: np.ndarray, cuts: np.ndarray, speech: np.ndarray, replay: np.ndarray | None = None
+) -> np.ndarray:
     """Weighted sum of the z-scored signals, smoothed with a 3 s moving average."""
     a, b, c = WEIGHTS
     raw = a * robust_z(loud) + b * zscore(cuts) + c * zscore(speech)
+    if replay is not None and replay.any():
+        raw = (1 - REPLAY_WEIGHT) * raw + REPLAY_WEIGHT * zscore(replay)
     return np.convolve(raw, np.ones(SMOOTH_SECONDS) / SMOOTH_SECONDS, mode="same")
