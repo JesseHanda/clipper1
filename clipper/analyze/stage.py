@@ -28,8 +28,7 @@ def run(job: Job, force: bool = False) -> Job:
     job_dir.mkdir(parents=True, exist_ok=True)
     path = job_dir / "transcript.json"
     if force or not path.exists():
-        hint = " ".join(t for t in (job.title, job.context) if t)
-        transcript = transcribe(Path(job.audio_file), config.WHISPER_MODEL, hint)
+        transcript = transcribe(Path(job.audio_file), config.WHISPER_MODEL)
         tmp = path.with_suffix(".json.tmp")
         tmp.write_text(transcript.model_dump_json(indent=2), encoding="utf-8")
         os.replace(tmp, path)

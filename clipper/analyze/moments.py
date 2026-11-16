@@ -42,7 +42,8 @@ it. A good moment hooks in its first 3 seconds, makes sense to someone who has n
 the rest of the video, and ends on its payoff.
 
 Return each moment's start and end in seconds, taken from the transcript times, starting \
-on the line where it begins and ending after the line where it lands. Return the best \
+on the line where it begins and ending at the start time of the line after the one where \
+it lands. Return the best \
 moments only, best first, and never more than you are asked for. Return an empty list if \
 nothing in the transcript stands on its own."""
 

@@ -16,7 +16,9 @@ from clipper.models import Clip, Job, Transcript, Word
 
 log = logging.getLogger(__name__)
 
-MAX_OVERLAP = 0.5  # of the shorter clip; from AutoClip's _dedupe (MIT)
+# Of the shorter clip (the idea is from AutoClip's _dedupe, MIT). Low, because two posts that
+# share several seconds of footage read as a repost.
+MAX_OVERLAP = 0.2
 LINE_MAX_WORDS = 12  # transcript lines in the prompt break at pauses, or after this many words
 
 
@@ -55,7 +57,8 @@ one-sentence reason saying what happens in it. Use the transcript times to set t
 and end: start at most 2 seconds before the line where the moment begins, and end just \
 after the payoff, never in the middle of a sentence. Base the reason only on what you are \
 given; do not invent events. When a candidate has no speech, you only have its stats: say \
-so in the reason and score it cautiously."""
+so in the reason and score it cautiously. Windows can overlap: score each one on its own, \
+because only the best of an overlapping set is used."""
 
 
 def build_prompt(
