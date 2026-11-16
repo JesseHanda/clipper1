@@ -56,7 +56,8 @@ community actually searches.
 
 For each clip you receive, write:
 - hook_options: three different on-screen hooks for the first 3 seconds, each at most 6 \
-words, no hashtags, no emojis. A hook opens a question the clip answers: tease the outcome \
+words, no hashtags. It may end with one emoji that fits the moment. A hook opens a \
+question the clip answers: tease the outcome \
 without giving it away, or name the stakes, or call out who this is for. It must be true \
 to the clip, because a hook the clip does not pay off makes viewers leave. Use concrete \
 words from the moment, not filler like "wait for it" or "you won't believe this".
@@ -217,13 +218,20 @@ EMOJI = re.compile("[\U0001f000-\U0001faff\u2600-\u27bf\ufe0f\u200d]")
 
 def pick_hook(chosen: str, options: list[str]) -> str:
     """Claude's choice, unless it is too long and one of its other drafts fits."""
-    fits = [h for h in [chosen, *options] if 0 < len(h.split()) <= HOOK_MAX_WORDS]
+    fits = [h for h in [chosen, *options] if 0 < _hook_words(h) <= HOOK_MAX_WORDS]
     return fits[0] if fits else chosen
 
 
+def _hook_words(text: str) -> int:
+    return len(EMOJI.sub("", text).split())  # an emoji is not a word
+
+
 def clean_hook(text: str) -> str:
-    words = EMOJI.sub("", re.sub(r"#\w+", "", text)).split()
-    return " ".join(words[:HOOK_MAX_WORDS])
+    """At most HOOK_MAX_WORDS words, no hashtags, and one emoji at the end if there was one."""
+    text = re.sub(r"#\w+", "", text)
+    emoji = re.search(f"{EMOJI.pattern}+", text)
+    words = EMOJI.sub("", text).split()[:HOOK_MAX_WORDS]
+    return " ".join(words + ([emoji.group()] if emoji and words else []))
 
 
 def clean_caption(text: str) -> str:

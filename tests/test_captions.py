@@ -163,8 +163,19 @@ def test_clean_hook_limits_words_and_strips_hashtags():
     )
 
 
-def test_clean_hook_strips_emojis():
-    assert generate.clean_hook("He did NOT see that \U0001f602\U0001f525") == "He did NOT see that"
+def test_clean_hook_keeps_one_emoji_at_the_end():
+    assert generate.clean_hook("He \U0001f440 did NOT see that \U0001f602") == (
+        "He did NOT see that \U0001f440"
+    )
+    assert generate.clean_hook("one two three four five six seven \U0001f602") == (
+        "one two three four five six \U0001f602"
+    )
+    assert generate.clean_hook("\U0001f602") == ""
+
+
+def test_pick_hook_does_not_count_an_emoji_as_a_word():
+    long_with_emoji = "one two three four five six \U0001f602"
+    assert generate.pick_hook(long_with_emoji, ["short"]) == long_with_emoji
 
 
 def test_long_hook_is_replaced_by_an_option_that_fits(monkeypatch, job):
