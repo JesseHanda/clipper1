@@ -198,7 +198,8 @@ def _apply_caption(clip: Clip, cap: ClipCaption) -> None:
 def _apply_fallback(clip: Clip, job: Job, number: int) -> None:
     """No Claude: the video title, with a caption of the clip's own so posts don't repeat."""
     title = (job.title or job.context or "Watch till the end").strip()
-    clip.hook_text = clean_hook(title)
+    # the title up to its first bracket or bar, so six words don't end inside "(THESE LEAKS"
+    clip.hook_text = clean_hook(re.split(r"[(\[|]", title)[0].strip() or title)
     clip.title = title
     if clip.score > 0 and clip.reason:  # Claude's ranker said what happens in this clip
         clip.caption = clean_caption(clip.reason)

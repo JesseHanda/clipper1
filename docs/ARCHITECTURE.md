@@ -107,7 +107,8 @@ Stage order: **ingest → analyze → captions → render**. Captions runs befor
 ### 5.4 render (Dev A)
 - One ffmpeg call per clip: `-ss start -to end -i source.mp4`, re-encoded so the cut is frame-accurate.
 - Blur layout filter:
-  `[0:v]split[a][b];[a]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=20:2[bg];[b]scale=1080:-2[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2`
+  `[0:v]split[a][b];[a]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=20:2[bg];[b]scale=W:-2,crop=1080:ih[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2`
+  where `W = 1080 × FOREGROUND_ZOOM` (default 1.3). At 1.0 a 16:9 source covers a third of the screen; at 1.3 it covers 41% and loses 11.5% of its width on each side.
 - Subtitles: build an `.ass` file from the word timestamps (2–4 words per line, current word highlighted, bold, centered in the lower third). The hook goes on the top third for 0–3s. Burn it with `subtitles=clip.ass`. **On Windows, run ffmpeg with `cwd` set to the clip folder and pass a relative `.ass` filename.** Absolute Windows paths break the filter.
 - Audio: `loudnorm=I=-14:TP=-1.5`. Output: `libx264 -preset veryfast -crf 20 -r 30 -pix_fmt yuv420p`, `aac 128k`, `-movflags +faststart`.
 - Supports `--clip <id>` so the dashboard can re-render one clip after an edit. Status becomes `rendered`, which means ready for review.

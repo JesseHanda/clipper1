@@ -54,6 +54,9 @@ WHISPER_MODEL = _get("WHISPER_MODEL", "small")
 
 # Render
 LAYOUT = _get("LAYOUT", "blur")  # blur | facecam (stretch)
+# How much the source is enlarged over the blurred background. 1.0 shows its full width;
+# 1.3 makes it 30% bigger and crops 11.5% off each side (the edges of the HUD).
+FOREGROUND_ZOOM = float(_get("FOREGROUND_ZOOM", "1.3"))
 MUSIC_MODE = _get("MUSIC_MODE", "in_app")  # in_app | library (stretch)
 
 # Captions

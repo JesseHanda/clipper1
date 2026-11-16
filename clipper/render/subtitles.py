@@ -25,7 +25,7 @@ Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour,
 Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, \
 Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
 Style: Caption,Arial,80,&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,\
--1,0,0,0,100,100,0,0,1,6,0,2,60,60,500,1
+-1,0,0,0,100,100,0,0,1,6,0,2,60,60,440,1
 Style: Hook,Arial,96,&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,\
 -1,0,0,0,100,100,0,0,1,8,0,8,60,60,300,1
 

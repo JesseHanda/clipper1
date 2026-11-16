@@ -100,6 +100,12 @@ def test_fallback_uses_context_when_no_title(monkeypatch, job):
     assert generate.run(job).clips[0].title == "GTA 6 launch week, police chase fails"
 
 
+def test_fallback_hook_stops_before_a_bracket_in_the_title(monkeypatch, job):
+    job.title = "NEW GTA 6 GAMEPLAY (THESE LEAKS ARE INSANE!)"
+    _fake_claude(monkeypatch, error=llm.LLMError("down"))
+    assert generate.run(job).clips[0].hook_text == "NEW GTA 6 GAMEPLAY"
+
+
 def test_falls_back_when_claude_fails(monkeypatch, job):
     _fake_claude(monkeypatch, error=llm.LLMError("down"))
     out = generate.run(job)
