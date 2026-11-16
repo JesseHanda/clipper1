@@ -28,7 +28,8 @@ def run(job: Job, force: bool = False) -> Job:
     job_dir.mkdir(parents=True, exist_ok=True)
     path = job_dir / "transcript.json"
     if force or not path.exists():
-        transcript = transcribe(Path(job.audio_file), config.WHISPER_MODEL)
+        hint = " ".join(t for t in (job.title, job.context) if t)
+        transcript = transcribe(Path(job.audio_file), config.WHISPER_MODEL, hint)
         tmp = path.with_suffix(".json.tmp")
         tmp.write_text(transcript.model_dump_json(indent=2), encoding="utf-8")
         os.replace(tmp, path)
@@ -65,7 +66,7 @@ def _candidates(job: Job, transcript: Transcript) -> list[Candidate]:
     )
     return find_candidates(
         score,
-        signals.zscore(loud),
+        signals.robust_z(loud),
         cuts,
         transcript,
         duration=job.duration or n,

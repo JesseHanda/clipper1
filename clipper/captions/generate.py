@@ -23,7 +23,7 @@ Vibe = Literal["hype", "funny", "chill", "dramatic"]
 
 HOOK_MAX_WORDS = 6
 CAPTION_MAX_CHARS = 150
-EXTRA_HASHTAGS_MAX = 5
+HASHTAGS_MAX = 5  # per post, base tags included: Instagram's limit, and TikTok's composer's
 MAX_SOUNDS_IN_PROMPT = 150  # ~15 tokens each
 
 
@@ -32,6 +32,7 @@ MAX_SOUNDS_IN_PROMPT = 150  # ~15 tokens each
 
 class ClipCaption(BaseModel):
     id: str
+    hook_options: list[str]  # drafts; hook_text is the one Claude picked
     hook_text: str
     title: str
     caption: str
@@ -54,12 +55,18 @@ the clip transcripts. Write in the voice of that niche's community and pick hash
 community actually searches.
 
 For each clip you receive, write:
-- hook_text: on-screen text shown for the first 3 seconds. At most 6 words. It must make \
-the viewer want to see what happens, and it must be true to the clip. No hashtags, no emojis.
+- hook_options: three different on-screen hooks for the first 3 seconds, each at most 6 \
+words, no hashtags, no emojis. A hook opens a question the clip answers: tease the outcome \
+without giving it away, or name the stakes, or call out who this is for. It must be true \
+to the clip, because a hook the clip does not pay off makes viewers leave. Use concrete \
+words from the moment, not filler like "wait for it" or "you won't believe this".
+- hook_text: the strongest of your three options, copied exactly.
 - title: a short internal title (under 60 characters) describing the moment.
 - caption: the post caption, at most 150 characters, written like a real fan of this \
-niche posts. At most one emoji. No hashtags in the caption. It can ask a question to \
-drive comments.
+niche posts. Name the game or topic in plain words, the way someone would search for it. \
+Give viewers a reason to comment or to send it to a friend: a question with more than one \
+defensible answer, or a "this is so you" angle. Do not repeat the hook. At most one emoji. \
+No hashtags in the caption.
 - hashtags: 3 to 5 hashtags specific to this video's niche and this moment (the game or \
 topic name plus what happens), not generic tags like #fyp or #viral.{base_tags_rule}
 - vibe: one of hype, funny, chill, dramatic, whichever best fits the moment.
@@ -96,7 +103,7 @@ def run(job: Job, force: bool = False) -> Job:
         if cap is None:
             if captions:  # Claude answered but skipped this clip
                 log.warning("no caption from Claude for clip %s; using fallback", clip.id)
-            _apply_fallback(clip, job)
+            _apply_fallback(clip, job, i + 1)
         else:
             _apply_caption(clip, cap)
         clip.suggested_sound = _sound_for(cap, sounds, clip.vibe, i)
@@ -181,18 +188,22 @@ def _ask_claude(
 
 
 def _apply_caption(clip: Clip, cap: ClipCaption) -> None:
-    clip.hook_text = clean_hook(cap.hook_text)
+    clip.hook_text = clean_hook(pick_hook(cap.hook_text, cap.hook_options))
     clip.title = cap.title.strip()
     clip.caption = clean_caption(cap.caption)
     clip.hashtags = merge_hashtags(config.BASE_HASHTAGS, cap.hashtags)
     clip.vibe = cap.vibe
 
 
-def _apply_fallback(clip: Clip, job: Job) -> None:
+def _apply_fallback(clip: Clip, job: Job, number: int) -> None:
+    """No Claude: the video title, with a caption of the clip's own so posts don't repeat."""
     title = (job.title or job.context or "Watch till the end").strip()
     clip.hook_text = clean_hook(title)
     clip.title = title
-    clip.caption = clean_caption(title)
+    if clip.score > 0 and clip.reason:  # Claude's ranker said what happens in this clip
+        clip.caption = clean_caption(clip.reason)
+    else:
+        clip.caption = clean_caption(f"{title} (part {number} of {len(job.clips)})")
     clip.hashtags = merge_hashtags(config.BASE_HASHTAGS, [])
     clip.vibe = "hype"
 
@@ -200,8 +211,17 @@ def _apply_fallback(clip: Clip, job: Job) -> None:
 # ---------------------------------------------------------------- normalizers (pure)
 
 
+EMOJI = re.compile("[\U0001f000-\U0001faff\u2600-\u27bf\ufe0f\u200d]")
+
+
+def pick_hook(chosen: str, options: list[str]) -> str:
+    """Claude's choice, unless it is too long and one of its other drafts fits."""
+    fits = [h for h in [chosen, *options] if 0 < len(h.split()) <= HOOK_MAX_WORDS]
+    return fits[0] if fits else chosen
+
+
 def clean_hook(text: str) -> str:
-    words = re.sub(r"#\w+", "", text).split()
+    words = EMOJI.sub("", re.sub(r"#\w+", "", text)).split()
     return " ".join(words[:HOOK_MAX_WORDS])
 
 
@@ -221,16 +241,10 @@ def normalize_hashtag(tag: str) -> str | None:
 
 
 def merge_hashtags(base: list[str], extra: list[str]) -> list[str]:
-    """Base tags first, then up to EXTRA_HASHTAGS_MAX new ones; deduped, lowercase."""
+    """Base tags first, then new ones, HASHTAGS_MAX in total; deduped, lowercase."""
     out: list[str] = []
-    for tag in base:
+    for tag in [*base, *extra]:
         t = normalize_hashtag(tag)
-        if t and t not in out:
+        if t and t not in out and len(out) < HASHTAGS_MAX:
             out.append(t)
-    added = 0
-    for tag in extra:
-        t = normalize_hashtag(tag)
-        if t and t not in out and added < EXTRA_HASHTAGS_MAX:
-            out.append(t)
-            added += 1
     return out

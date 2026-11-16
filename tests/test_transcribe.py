@@ -102,7 +102,10 @@ def test_stage_writes_transcript_and_skips_rerun(fake_whisper, job, caplog):
 
     analyze.run(job)
     assert len(fake_whisper["transcribe"]) == 1
+    assert fake_whisper["transcribe"][0][1]["hotwords"] is None  # no title or note to hint with
+    job.title, job.context = "GTA 6 chaos", "Vice City police fails"
     analyze.run(job, force=True)
+    assert fake_whisper["transcribe"][1][1]["hotwords"] == "GTA 6 chaos Vice City police fails"
     assert len(fake_whisper["transcribe"]) == 2
 
 

@@ -41,6 +41,17 @@ def test_flat_signals_give_no_nans():
     assert len(sig.zscore(np.array([]))) == 0
 
 
+def test_silent_stretches_do_not_flatten_loudness_peaks():
+    rng = np.random.default_rng(0)
+    loud = -30 + rng.normal(0, 3, 600)
+    loud[300] = -10  # the moment
+    with_silence = loud.copy()
+    with_silence[:60] = -100  # a silent intro (digital silence floor)
+    assert sig.robust_z(with_silence)[300] == pytest.approx(sig.robust_z(loud)[300], rel=0.15)
+    assert sig.robust_z(with_silence).min() == -3  # silence is capped, not an outlier
+    assert sig.combine(with_silence, np.zeros(600), np.zeros(600)).argmax() in (299, 300, 301)
+
+
 def test_cut_density_counts_a_centred_window():
     d = sig.cut_density([10.2, 11.0, 30.5, 99.0], n=40, window=5)
     assert d[10] == 2 and d[8] == 1 and d[13] == 1 and d[14] == 0

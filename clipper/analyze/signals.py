@@ -49,6 +49,18 @@ def zscore(x: np.ndarray) -> np.ndarray:
     return (x - x.mean()) / std if std > 0 else np.zeros_like(x, dtype=float)
 
 
+def robust_z(x: np.ndarray) -> np.ndarray:
+    """z-score around the median, for loudness: silent stretches (-100 dB) would otherwise
+    inflate the spread and flatten the real peaks. Quiet seconds are capped at -3."""
+    if not len(x):
+        return zscore(x)
+    median = np.median(x)
+    mad = np.median(np.abs(x - median))
+    if mad == 0:
+        return zscore(x)
+    return np.maximum((x - median) / (1.4826 * mad), -3.0)  # 1.4826: MAD -> std for normal data
+
+
 def detect_cuts(video: Path) -> list[float]:
     """Scene-cut times in seconds (PySceneDetect ContentDetector on a ~360p downscale)."""
     from scenedetect import ContentDetector, SceneManager, open_video
@@ -93,5 +105,5 @@ def speech_per_second(transcript: Transcript, n: int) -> np.ndarray:
 def combine(loud: np.ndarray, cuts: np.ndarray, speech: np.ndarray) -> np.ndarray:
     """Weighted sum of the z-scored signals, smoothed with a 3 s moving average."""
     a, b, c = WEIGHTS
-    raw = a * zscore(loud) + b * zscore(cuts) + c * zscore(speech)
+    raw = a * robust_z(loud) + b * zscore(cuts) + c * zscore(speech)
     return np.convolve(raw, np.ones(SMOOTH_SECONDS) / SMOOTH_SECONDS, mode="same")

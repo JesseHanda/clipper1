@@ -22,10 +22,11 @@ PARAMS = {
 }
 
 
-def transcribe(audio: Path, model_name: str) -> Transcript:
+def transcribe(audio: Path, model_name: str, hint: str | None = None) -> Transcript:
+    """`hint` is free text (video title, poster's note) with names whisper should spell right."""
     started = time.monotonic()
     model = WhisperModel(model_name, device="auto", compute_type="int8")
-    segments, info = model.transcribe(str(audio), **PARAMS)
+    segments, info = model.transcribe(str(audio), **PARAMS, hotwords=hint or None)
     transcript = Transcript(
         language=info.language,
         segments=[_segment(s) for s in segments],  # decoding happens while iterating
